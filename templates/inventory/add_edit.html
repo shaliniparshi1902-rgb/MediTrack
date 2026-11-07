@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}MediTrack - {% if is_edit %}Edit Medicine{% else %}Add New Medicine{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="fw-bold text-dark mb-1">{% if is_edit %}Edit Medicine Profile{% else %}Add New Medicine{% endif %}</h3>
+                <p class="text-muted small mb-0">{% if is_edit %}Update pharmaceutical specifications and storage location{% else %}Register a new drug into the hospital catalog with optional initial batch{% endif %}</p>
+            </div>
+            <div>
+                <a href="{{ url_for('inventory.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Inventory
+                </a>
+            </div>
+        </div>
+
+        <form method="POST">
+            <!-- 1. Master Medicine Details Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="fw-bold mb-0 text-primary">
+                        <i class="bi bi-capsule me-1"></i> Medicine Master Information
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label fw-semibold small">Medicine Brand Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ medicine.name if is_edit else (form.name or '') }}" 
+                                   placeholder="e.g. Augmentin 625 Duo" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="generic_name" class="form-label fw-semibold small">Generic / Chemical Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="generic_name" name="generic_name" 
+                                   value="{{ medicine.generic_name if is_edit else (form.generic_name or '') }}" 
+                                   placeholder="e.g. Amoxicillin + Clavulanic Acid" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="category_id" class="form-label fw-semibold small">Category <span class="text-danger">*</span></label>
+                            <select class="form-select" id="category_id" name="category_id" required>
+                                <option value="">Select Category</option>
+                                {% for c in categories %}
+                                    <option value="{{ c.id }}" {% if (is_edit and medicine.category_id|string == c.id|string) or (not is_edit and form.category_id|string == c.id|string) %}selected{% endif %}>
+                                        {{ c.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="dosage_form" class="form-label fw-semibold small">Dosage Form <span class="text-danger">*</span></label>
+                            <select class="form-select" id="dosage_form" name="dosage_form" required>
+                                {% for form_opt in ['Tablet', 'Capsule', 'Injection', 'Syrup', 'IV Fluid', 'Ointment', 'Inhaler', 'Drops'] %}
+                                    <option value="{{ form_opt }}" {% if is_edit and medicine.dosage_form == form_opt %}selected{% endif %}>
+                                        {{ form_opt }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="strength" class="form-label fw-semibold small">Strength / Dosage <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="strength" name="strength" 
+                                   value="{{ medicine.strength if is_edit else (form.strength or '') }}" 
+                                   placeholder="e.g. 625 mg, 100 ml, 1 g" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="manufacturer" class="form-label fw-semibold small">Manufacturer</label>
+                            <input type="text" class="form-control" id="manufacturer" name="manufacturer" 
+                                   value="{{ medicine.manufacturer if is_edit else (form.manufacturer or '') }}" 
+                                   placeholder="e.g. GlaxoSmithKline">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="min_stock_threshold" class="form-label fw-semibold small">Low-Stock Alert Threshold <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="min_stock_threshold" name="min_stock_threshold" 
+                                   value="{{ medicine.min_stock_threshold if is_edit else (form.min_stock_threshold or '20') }}" 
+                                   min="1" required>
+                            <small class="text-muted">Triggers low-stock warning when stock drops to or below this level.</small>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="storage_rack" class="form-label fw-semibold small">Storage Rack / Bay</label>
+                            <input type="text" class="form-control" id="storage_rack" name="storage_rack" 
+                                   value="{{ medicine.storage_rack if is_edit else (form.storage_rack or '') }}" 
+                                   placeholder="e.g. Rack A-3, Cold Box 2">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if not is_edit %}
+            <!-- 2. Optional Initial Batch Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0 text-success">
+                        <i class="bi bi-box-seam me-1"></i> Initial Batch Details <span class="text-muted fw-normal small">(Optional)</span>
+                    </h5>
+                    <small class="text-muted">You can also add batches later</small>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="batch_number" class="form-label fw-semibold small">Batch Number</label>
+                            <input type="text" class="form-control" id="batch_number" name="batch_number" 
+                                   value="{{ form.batch_number or '' }}" placeholder="e.g. AUG-2026-B1">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="initial_quantity" class="form-label fw-semibold small">Quantity (Units)</label>
+                            <input type="number" class="form-control" id="initial_quantity" name="initial_quantity" 
+                                   value="{{ form.initial_quantity or '' }}" min="1" placeholder="e.g. 100">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="unit_price" class="form-label fw-semibold small">Unit Purchase Price ($)</label>
+                            <input type="number" step="0.01" class="form-control" id="unit_price" name="unit_price" 
+                                   value="{{ form.unit_price or '0.00' }}" placeholder="0.00">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="mfg_date" class="form-label fw-semibold small">Manufacturing Date</label>
+                            <input type="date" class="form-control" id="mfg_date" name="mfg_date" 
+                                   value="{{ form.mfg_date or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="expiry_date" class="form-label fw-semibold small">Expiry Date</label>
+                            <input type="date" class="form-control" id="expiry_date" name="expiry_date" 
+                                   value="{{ form.expiry_date or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="supplier" class="form-label fw-semibold small">Supplier / Agency</label>
+                            <input type="text" class="form-control" id="supplier" name="supplier" 
+                                   value="{{ form.supplier or '' }}" placeholder="e.g. MedSupply Direct">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="d-flex justify-content-end gap-2 mb-5">
+                <a href="{{ url_for('inventory.index') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                    <i class="bi bi-check2-circle me-1"></i> {% if is_edit %}Save Changes{% else %}Create Medicine{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

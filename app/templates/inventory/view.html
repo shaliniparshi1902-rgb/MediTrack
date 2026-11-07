@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+
+{% block title %}MediTrack - {{ medicine.name }}{% endblock %}
+
+{% block content %}
+<!-- Medicine Header Card -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <h2 class="fw-bold text-dark mb-0">{{ medicine.name }}</h2>
+                    <span class="badge bg-primary-subtle text-primary fs-6">{{ medicine.category_name }}</span>
+                    {% if is_low_stock %}
+                        <span class="badge bg-danger fs-6">Low Stock</span>
+                    {% endif %}
+                </div>
+                <h5 class="text-muted fw-normal mb-3">{{ medicine.generic_name }}</h5>
+                <div class="d-flex flex-wrap gap-4 text-muted small">
+                    <div><strong class="text-dark">Formulation:</strong> {{ medicine.dosage_form }} ({{ medicine.strength }})</div>
+                    <div><strong class="text-dark">Manufacturer:</strong> {{ medicine.manufacturer or 'N/A' }}</div>
+                    <div><strong class="text-dark">Rack / Location:</strong> <code>{{ medicine.storage_rack or 'Unassigned' }}</code></div>
+                    <div><strong class="text-dark">Min Threshold:</strong> {{ medicine.min_stock_threshold }} units</div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-column align-items-end gap-2">
+                <div class="text-end">
+                    <span class="text-muted small text-uppercase fw-semibold d-block">Available Stock</span>
+                    <span class="display-6 fw-bold {% if is_low_stock %}text-danger{% else %}text-success{% endif %}">
+                        {{ total_active_stock }}
+                    </span>
+                    <span class="text-muted small">units</span>
+                    {% if total_expired_stock > 0 %}
+                        <div class="text-danger small fw-semibold">
+                            <i class="bi bi-exclamation-octagon me-1"></i>{{ total_expired_stock }} expired units in storage
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2 mt-2">
+                    <a href="{{ url_for('inventory.edit', medicine_id=medicine.id) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-pencil me-1"></i> Edit
+                    </a>
+                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteMedicineModal">
+                        <i class="bi bi-trash me-1"></i> Delete
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addBatchModal">
+                        <i class="bi bi-plus-circle me-1"></i> Add Batch
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Batches Table Card -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-boxes text-primary me-1"></i> Batches & Expiry Tracking ({{ batches|length }})
+        </h5>
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addBatchModal">
+            <i class="bi bi-plus-circle me-1"></i> Add Batch
+        </button>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small">
+                <tr>
+                    <th>Batch Number</th>
+                    <th>Available / Initial</th>
+                    <th>Mfg Date</th>
+                    <th>Expiry Date</th>
+                    <th>Shelf-Life Status</th>
+                    <th>Unit Price</th>
+                    <th>Supplier</th>
+                    <th>Status</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if batches %}
+                    {% for b in batches %}
+                    <tr>
+                        <td><code>{{ b.batch_number }}</code></td>
+                        <td>
+                            <strong class="{% if b.current_quantity == 0 %}text-muted{% elif b.current_quantity <= 15 %}text-danger{% else %}text-dark{% endif %}">
+                                {{ b.current_quantity }}
+                            </strong>
+                            <small class="text-muted">/ {{ b.initial_quantity }}</small>
+                        </td>
+                        <td>{{ b.mfg_date|date_format }}</td>
+                        <td>{{ b.expiry_date|date_format }}</td>
+                        <td>
+                            <span class="badge bg-{{ b.expiry_info.badge_class }}">
+                                {{ b.expiry_info.label }}
+                            </span>
+                        </td>
+                        <td>${{ '%.2f'|format(b.unit_price) }}</td>
+                        <td><small>{{ b.supplier or 'N/A' }}</small></td>
+                        <td>
+                            <span class="badge {% if b.status == 'active' %}bg-success-subtle text-success{% elif b.status == 'quarantined' %}bg-warning-subtle text-warning{% else %}bg-secondary-subtle text-secondary{% endif %}">
+                                {{ b.status|capitalize }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <form method="POST" action="{{ url_for('inventory.delete_batch', batch_id=b.id) }}" class="d-inline" onsubmit="return confirm('Remove or quarantine batch {{ b.batch_number }}?');">
+                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Remove / Quarantine Batch">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">
+                            No batches currently on record for this medicine.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Medicine Usage History Card -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-clock-history text-secondary me-1"></i> Recent Dispensing History
+        </h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+                <tr>
+                    <th>Date & Time</th>
+                    <th>Batch #</th>
+                    <th>Quantity</th>
+                    <th>Department</th>
+                    <th>Patient Name</th>
+                    <th>Prescribed By</th>
+                    <th>Dispensed By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if usage_history %}
+                    {% for u in usage_history %}
+                    <tr>
+                        <td>{{ u.usage_date }}</td>
+                        <td><code>{{ u.batch_number }}</code></td>
+                        <td><span class="badge bg-secondary">{{ u.quantity_used }} units</span></td>
+                        <td><span class="badge bg-light text-dark border">{{ u.department }}</span></td>
+                        <td><strong>{{ u.patient_name }}</strong> <small class="text-muted">({{ u.patient_id or 'No ID' }})</small></td>
+                        <td>{{ u.prescribed_by or 'N/A' }}</td>
+                        <td>{{ u.dispenser_name }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            No dispensing records found for this medicine.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Batch Modal -->
+<div class="modal fade" id="addBatchModal" tabindex="-1" aria-labelledby="addBatchModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('inventory.add_batch', medicine_id=medicine.id) }}">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="addBatchModalLabel">Add Batch for {{ medicine.name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="modal_batch_number" class="form-label small fw-semibold">Batch Number <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="modal_batch_number" name="batch_number" required placeholder="e.g. BATCH-2026-X1">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label for="modal_quantity" class="form-label small fw-semibold">Quantity <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="modal_quantity" name="quantity" min="1" required placeholder="e.g. 100">
+                        </div>
+                        <div class="col-6">
+                            <label for="modal_unit_price" class="form-label small fw-semibold">Unit Price ($)</label>
+                            <input type="number" step="0.01" class="form-control" id="modal_unit_price" name="unit_price" value="0.00">
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label for="modal_mfg_date" class="form-label small fw-semibold">Mfg Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="modal_mfg_date" name="mfg_date" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="modal_expiry_date" class="form-label small fw-semibold">Expiry Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="modal_expiry_date" name="expiry_date" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="modal_supplier" class="form-label small fw-semibold">Supplier</label>
+                        <input type="text" class="form-control" id="modal_supplier" name="supplier" placeholder="e.g. Apex Hospital Supplies">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Save Batch</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Medicine Confirmation Modal -->
+<div class="modal fade" id="deleteMedicineModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle me-1"></i> Confirm Medicine Deletion</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to permanently delete <strong>{{ medicine.name }}</strong> ({{ medicine.generic_name }}) from the inventory catalog?</p>
+                <div class="alert alert-warning small">
+                    <i class="bi bi-info-circle me-1"></i> If this medicine has associated dispensing history, deletion will be blocked to maintain medical audit integrity.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('inventory.delete', medicine_id=medicine.id) }}">
+                    <button type="submit" class="btn btn-danger btn-sm">Permanently Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

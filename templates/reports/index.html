@@ -1,0 +1,351 @@
+{% extends 'base.html' %}
+
+{% block title %}MediTrack - Inventory & Expiry Reports{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold text-dark mb-1">Inventory & Expiry Reports</h3>
+        <p class="text-muted small mb-0">Generate hospital compliance reports, financial loss audits, and stock level summaries</p>
+    </div>
+    <div>
+        <a href="{{ url_for('reports.export_csv', type=active_tab, days=days_window) }}" class="btn btn-outline-success">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export to CSV
+        </a>
+    </div>
+</div>
+
+<!-- Report Navigation Tabs -->
+<ul class="nav nav-pills mb-4 gap-2 bg-white p-2 rounded shadow-sm border">
+    <li class="nav-item">
+        <a class="nav-link {% if active_tab == 'expired' %}active{% endif %}" href="{{ url_for('reports.index', tab='expired') }}">
+            <i class="bi bi-x-octagon me-1"></i> Expired Medicines
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active_tab == 'low_stock' %}active{% endif %}" href="{{ url_for('reports.index', tab='low_stock') }}">
+            <i class="bi bi-bell me-1"></i> Low-Stock Alerts
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active_tab == 'expiring_soon' %}active{% endif %}" href="{{ url_for('reports.index', tab='expiring_soon', days=days_window) }}">
+            <i class="bi bi-alarm me-1"></i> Expiring Soon
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active_tab == 'usage' %}active{% endif %}" href="{{ url_for('reports.index', tab='usage') }}">
+            <i class="bi bi-clock-history me-1"></i> Medicine Usage Audit
+        </a>
+    </li>
+</ul>
+
+<!-- ========================================================================= -->
+<!-- 1. EXPIRED MEDICINES TAB -->
+<!-- ========================================================================= -->
+{% if active_tab == 'expired' %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm border-0 border-start border-danger border-4">
+            <span class="text-muted small text-uppercase fw-semibold">Expired Batches</span>
+            <h3 class="fw-bold text-danger mb-0">{{ summary.total_batches }}</h3>
+            <small class="text-muted">Distinct expired batches</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm border-0 border-start border-danger border-4">
+            <span class="text-muted small text-uppercase fw-semibold">Total Expired Units</span>
+            <h3 class="fw-bold text-danger mb-0">{{ summary.total_units }}</h3>
+            <small class="text-muted">Units unusable and quarantined</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm border-0 border-start border-danger border-4">
+            <span class="text-muted small text-uppercase fw-semibold">Estimated Financial Loss</span>
+            <h3 class="fw-bold text-danger mb-0">${{ '%.2f'|format(summary.total_financial_loss) }}</h3>
+            <small class="text-muted">Based on purchase unit price</small>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small">
+                <tr>
+                    <th>Medicine</th>
+                    <th>Category</th>
+                    <th>Batch #</th>
+                    <th>Expired Date</th>
+                    <th>Expired Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Loss Value</th>
+                    <th>Supplier</th>
+                    <th>Rack Location</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if expired_list %}
+                    {% for item in expired_list %}
+                    <tr>
+                        <td>
+                            <strong>{{ item.medicine_name }}</strong>
+                            <small class="text-muted d-block">{{ item.generic_name }}</small>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ item.category_name }}</span></td>
+                        <td><code>{{ item.batch_number }}</code></td>
+                        <td class="text-danger fw-semibold">{{ item.expiry_date|date_format }}</td>
+                        <td><span class="badge bg-danger">{{ item.current_quantity }} units</span></td>
+                        <td>${{ '%.2f'|format(item.unit_price) }}</td>
+                        <td class="text-danger fw-bold">${{ '%.2f'|format(item.financial_loss) }}</td>
+                        <td><small>{{ item.supplier or 'N/A' }}</small></td>
+                        <td><code>{{ item.storage_rack or 'N/A' }}</code></td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="bi bi-shield-check text-success fs-1 d-block mb-2"></i>
+                            <h5 class="text-success">No Expired Medicines Found</h5>
+                            <p class="small mb-0">All batches currently in inventory are within their valid shelf-life.</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- ========================================================================= -->
+<!-- 2. LOW-STOCK ALERTS TAB -->
+<!-- ========================================================================= -->
+{% if active_tab == 'low_stock' %}
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm border-0 border-start border-warning border-4">
+            <span class="text-muted small text-uppercase fw-semibold">Medicines in Low Stock</span>
+            <h3 class="fw-bold text-warning mb-0">{{ summary.total_low_stock_medicines }}</h3>
+            <small class="text-muted">Items at or below safe reorder threshold</small>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm border-0 border-start border-danger border-4">
+            <span class="text-muted small text-uppercase fw-semibold">Cumulative Stock Deficit</span>
+            <h3 class="fw-bold text-danger mb-0">{{ summary.total_deficit_units }}</h3>
+            <small class="text-muted">Units required to restore baseline stock</small>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small">
+                <tr>
+                    <th>Medicine</th>
+                    <th>Category</th>
+                    <th>Dosage Form</th>
+                    <th>Current Active Stock</th>
+                    <th>Min Threshold</th>
+                    <th>Units Deficit</th>
+                    <th>Storage Rack</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if low_stock_list %}
+                    {% for item in low_stock_list %}
+                    <tr>
+                        <td>
+                            <strong>{{ item.name }}</strong>
+                            <small class="text-muted d-block">{{ item.generic_name }}</small>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ item.category_name }}</span></td>
+                        <td>{{ item.dosage_form }} ({{ item.strength }})</td>
+                        <td><span class="badge bg-danger">{{ item.active_stock }} units</span></td>
+                        <td>{{ item.min_stock_threshold }} units</td>
+                        <td class="text-danger fw-bold">+{{ item.deficit }} needed</td>
+                        <td><code>{{ item.storage_rack or 'N/A' }}</code></td>
+                        <td>
+                            <a href="{{ url_for('inventory.view', medicine_id=item.id) }}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-plus-circle me-1"></i> Add Batch
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-check-circle text-success fs-1 d-block mb-2"></i>
+                            <h5 class="text-success">All Stock Levels Healthy</h5>
+                            <p class="small mb-0">Every medicine has sufficient stock above minimum threshold.</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- ========================================================================= -->
+<!-- 3. EXPIRING SOON TAB -->
+<!-- ========================================================================= -->
+{% if active_tab == 'expiring_soon' %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="btn-group btn-group-sm">
+        <a href="{{ url_for('reports.index', tab='expiring_soon', days=30) }}" class="btn {% if days_window == 30 %}btn-warning text-dark fw-bold{% else %}btn-outline-secondary{% endif %}">Next 30 Days (Critical)</a>
+        <a href="{{ url_for('reports.index', tab='expiring_soon', days=60) }}" class="btn {% if days_window == 60 %}btn-warning text-dark fw-bold{% else %}btn-outline-secondary{% endif %}">Next 60 Days</a>
+        <a href="{{ url_for('reports.index', tab='expiring_soon', days=90) }}" class="btn {% if days_window == 90 %}btn-warning text-dark fw-bold{% else %}btn-outline-secondary{% endif %}">Next 90 Days</a>
+    </div>
+    <span class="badge bg-light text-dark border p-2">Window: Next {{ days_window }} Days</span>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm border-0 border-start border-warning border-4">
+            <span class="text-muted small text-uppercase fw-semibold">Batches Expiring</span>
+            <h3 class="fw-bold text-warning mb-0">{{ summary.total_batches }}</h3>
+            <small class="text-muted">Expiring within {{ summary.days_window }} days</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm border-0 border-start border-warning border-4">
+            <span class="text-muted small text-uppercase fw-semibold">Units at Risk</span>
+            <h3 class="fw-bold text-warning mb-0">{{ summary.total_units }}</h3>
+            <small class="text-muted">Units needing prioritized FEFO use</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm border-0 border-start border-warning border-4">
+            <span class="text-muted small text-uppercase fw-semibold">Value at Risk</span>
+            <h3 class="fw-bold text-warning mb-0">${{ '%.2f'|format(summary.total_value_at_risk) }}</h3>
+            <small class="text-muted">Potential financial loss</small>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small">
+                <tr>
+                    <th>Medicine</th>
+                    <th>Category</th>
+                    <th>Batch #</th>
+                    <th>Expiry Date</th>
+                    <th>Days Remaining</th>
+                    <th>Quantity at Risk</th>
+                    <th>Potential Loss</th>
+                    <th>Rack</th>
+                    <th>Supplier</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if expiring_soon_list %}
+                    {% for item in expiring_soon_list %}
+                    <tr>
+                        <td>
+                            <strong>{{ item.medicine_name }}</strong>
+                            <small class="text-muted d-block">{{ item.generic_name }}</small>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ item.category_name }}</span></td>
+                        <td><code>{{ item.batch_number }}</code></td>
+                        <td>{{ item.expiry_date|date_format }}</td>
+                        <td>
+                            <span class="badge bg-{{ item.expiry_info.badge_class }}">
+                                {{ item.expiry_info.label }}
+                            </span>
+                        </td>
+                        <td><span class="badge bg-secondary">{{ item.current_quantity }} units</span></td>
+                        <td class="text-warning fw-bold">${{ '%.2f'|format(item.value_at_risk) }}</td>
+                        <td><code>{{ item.storage_rack or 'N/A' }}</code></td>
+                        <td><small>{{ item.supplier or 'N/A' }}</small></td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="bi bi-calendar-check text-success fs-1 d-block mb-2"></i>
+                            <h5 class="text-success">No Imminent Expirations</h5>
+                            <p class="small mb-0">No batches expire within the selected {{ days_window }}-day window.</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- ========================================================================= -->
+<!-- 4. MEDICINE USAGE / CONSUMPTION TAB -->
+<!-- ========================================================================= -->
+{% if active_tab == 'usage' %}
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm border-0 border-start border-info border-4">
+            <span class="text-muted small text-uppercase fw-semibold">Dispensing Events</span>
+            <h3 class="fw-bold text-info mb-0">{{ summary.total_dispensed_events }}</h3>
+            <small class="text-muted">Recorded patient/department allocations</small>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm border-0 border-start border-success border-4">
+            <span class="text-muted small text-uppercase fw-semibold">Total Units Consumed</span>
+            <h3 class="fw-bold text-success mb-0">{{ summary.total_units_consumed }}</h3>
+            <small class="text-muted">Units administered across hospital</small>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+                <tr>
+                    <th>Date & Time</th>
+                    <th>Medicine</th>
+                    <th>Batch #</th>
+                    <th>Units</th>
+                    <th>Department</th>
+                    <th>Patient Name</th>
+                    <th>Patient ID</th>
+                    <th>Prescribed By</th>
+                    <th>Clinical Reason</th>
+                    <th>Dispensed By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if usage_list %}
+                    {% for u in usage_list %}
+                    <tr>
+                        <td>{{ u.usage_date }}</td>
+                        <td>
+                            <strong>{{ u.medicine_name }}</strong>
+                            <small class="text-muted d-block">{{ u.generic_name }}</small>
+                        </td>
+                        <td><code>{{ u.batch_number }}</code></td>
+                        <td><span class="badge bg-secondary">{{ u.quantity_used }}</span></td>
+                        <td><span class="badge bg-info-subtle text-info-emphasis">{{ u.department }}</span></td>
+                        <td>{{ u.patient_name }}</td>
+                        <td><code>{{ u.patient_id or 'N/A' }}</code></td>
+                        <td>{{ u.prescribed_by or 'N/A' }}</td>
+                        <td><small>{{ u.reason or 'N/A' }}</small></td>
+                        <td>{{ u.dispensed_by_name }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="10" class="text-center py-5 text-muted">
+                            No usage records match the criteria.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,455 @@
+/* =============================================================================
+   MediTrack Hospital Inventory System — Custom Theme (Stage 3)
+   Extends Bootstrap 5.3 with a clean medical / pharmaceutical design language.
+   All selectors are scoped to avoid collisions with Bootstrap defaults.
+   ============================================================================= */
+
+/* ── 1. DESIGN TOKENS ─────────────────────────────────────────────────────── */
+:root {
+  --mt-primary:        #0d6efd;
+  --mt-primary-dark:   #0a58ca;
+  --mt-success:        #198754;
+  --mt-danger:         #dc3545;
+  --mt-warning:        #ffc107;
+  --mt-info:           #0dcaf0;
+  --mt-bg:             #f0f4f8;        /* page background */
+  --mt-surface:        #ffffff;        /* card surface */
+  --mt-border:         #dee2e6;
+  --mt-text:           #212529;
+  --mt-text-muted:     #6c757d;
+  --mt-navbar-bg:      #0a4fa3;        /* deep hospital blue */
+  --mt-navbar-height:  58px;
+  --mt-card-radius:    10px;
+  --mt-shadow-sm:      0 1px 4px rgba(0,0,0,.08);
+  --mt-shadow:         0 2px 10px rgba(0,0,0,.10);
+  --mt-shadow-lg:      0 4px 24px rgba(0,0,0,.14);
+  --mt-transition:     0.18s ease;
+}
+
+/* ── 2. GLOBAL RESET / BODY ───────────────────────────────────────────────── */
+body {
+  background-color: var(--mt-bg);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", sans-serif;
+  font-size: 0.925rem;
+  color: var(--mt-text);
+  min-height: 100vh;
+}
+
+a { text-decoration: none; }
+a:hover { text-decoration: none; }
+
+/* ── 3. NAVBAR ────────────────────────────────────────────────────────────── */
+.navbar {
+  background-color: var(--mt-navbar-bg) !important;
+  min-height: var(--mt-navbar-height);
+  box-shadow: 0 2px 8px rgba(10,79,163,.30);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.navbar-brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: #fff !important;
+  gap: 10px;
+}
+.navbar-brand i { font-size: 1.5rem; }
+
+/* Nav links */
+.navbar-nav .nav-link {
+  color: rgba(255,255,255,.82) !important;
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 18px 14px !important;
+  border-bottom: 3px solid transparent;
+  transition: color var(--mt-transition), border-color var(--mt-transition);
+}
+.navbar-nav .nav-link:hover {
+  color: #fff !important;
+  border-bottom-color: rgba(255,255,255,.45);
+}
+.navbar-nav .nav-link.active,
+.navbar-nav .nav-link.fw-semibold {
+  color: #fff !important;
+  border-bottom-color: #fff;
+  font-weight: 600 !important;
+}
+
+/* User badge in navbar */
+.navbar .badge.bg-light { font-size: 0.72rem; }
+
+/* Logout button */
+.navbar .btn-outline-light {
+  border-color: rgba(255,255,255,.6);
+  font-size: 0.82rem;
+  padding: 5px 14px;
+}
+.navbar .btn-outline-light:hover {
+  background-color: rgba(255,255,255,.18);
+  border-color: #fff;
+}
+
+/* ── 4. PAGE WRAPPER ──────────────────────────────────────────────────────── */
+.container-fluid.py-4 {
+  padding-top: 1.6rem !important;
+  padding-bottom: 2.4rem !important;
+}
+
+/* ── 5. CARDS ─────────────────────────────────────────────────────────────── */
+.card {
+  border-radius: var(--mt-card-radius);
+  border: 1px solid var(--mt-border);
+  box-shadow: var(--mt-shadow-sm);
+  transition: box-shadow var(--mt-transition);
+}
+.card:hover { box-shadow: var(--mt-shadow); }
+
+.card-header {
+  border-radius: var(--mt-card-radius) var(--mt-card-radius) 0 0 !important;
+  font-size: 0.9rem;
+  background-color: var(--mt-surface) !important;
+}
+
+/* ── 6. KPI METRIC CARDS (Dashboard + Patient summary) ───────────────────── */
+.kpi-card {
+  border-radius: var(--mt-card-radius);
+  border: none;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--mt-transition), box-shadow var(--mt-transition);
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--mt-shadow-lg);
+}
+
+/* Coloured left-border KPI cards (Bootstrap built-in border-start is kept;
+   we enhance them with a subtle gradient background) */
+.card.border-start.border-primary { background: linear-gradient(135deg, #fff 70%, #e7f1ff 100%); }
+.card.border-start.border-success { background: linear-gradient(135deg, #fff 70%, #d1e7dd 100%); }
+.card.border-start.border-warning { background: linear-gradient(135deg, #fff 70%, #fff3cd 100%); }
+.card.border-start.border-danger  { background: linear-gradient(135deg, #fff 70%, #f8d7da 100%); }
+.card.border-start.border-info    { background: linear-gradient(135deg, #fff 70%, #cff4fc 100%); }
+
+/* KPI icon circles */
+.bg-primary-subtle.rounded-circle,
+.bg-success-subtle.rounded-circle,
+.bg-warning-subtle.rounded-circle,
+.bg-danger-subtle.rounded-circle,
+.bg-info-subtle.rounded-circle {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── 7. TABLES ────────────────────────────────────────────────────────────── */
+.table {
+  font-size: 0.875rem;
+}
+.table thead th {
+  font-size: 0.775rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--mt-text-muted);
+  border-bottom: 2px solid var(--mt-border);
+  white-space: nowrap;
+}
+.table-hover tbody tr:hover {
+  background-color: rgba(13,110,253,.04);
+}
+.table td, .table th {
+  vertical-align: middle;
+  padding: .55rem .75rem;
+}
+
+/* Striped effect (optional — uncomment if desired)
+.table tbody tr:nth-child(even) { background-color: #f8f9fa; } */
+
+/* ── 8. BADGES ────────────────────────────────────────────────────────────── */
+.badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: .32em .65em;
+  border-radius: 5px;
+  letter-spacing: .2px;
+}
+
+/* Status badges */
+.badge-expired  { background-color: #dc3545; color: #fff; }
+.badge-critical { background-color: #fd7e14; color: #fff; }
+.badge-warning  { background-color: #ffc107; color: #212529; }
+.badge-safe     { background-color: #198754; color: #fff; }
+
+/* ── 9. BUTTONS ───────────────────────────────────────────────────────────── */
+.btn {
+  border-radius: 7px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all var(--mt-transition);
+}
+.btn-sm { font-size: 0.8rem; border-radius: 6px; }
+
+.btn-primary  { background-color: var(--mt-primary); border-color: var(--mt-primary); }
+.btn-primary:hover { background-color: var(--mt-primary-dark); border-color: var(--mt-primary-dark); }
+
+/* ── 10. FORM CONTROLS ────────────────────────────────────────────────────── */
+.form-control, .form-select {
+  border-radius: 7px;
+  font-size: 0.875rem;
+  border-color: #ced4da;
+  transition: border-color var(--mt-transition), box-shadow var(--mt-transition);
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--mt-primary);
+  box-shadow: 0 0 0 .2rem rgba(13,110,253,.18);
+}
+.input-group-text {
+  border-radius: 7px 0 0 7px;
+  background-color: #f8f9fa;
+  border-color: #ced4da;
+  font-size: 0.875rem;
+}
+.form-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: .3rem;
+}
+.form-label .text-danger { font-size: 0.85em; }
+
+/* ── 11. ALERTS ───────────────────────────────────────────────────────────── */
+.alert {
+  border-radius: 8px;
+  font-size: 0.875rem;
+  border: none;
+  border-left: 4px solid transparent;
+}
+.alert-success { border-left-color: var(--mt-success); }
+.alert-danger  { border-left-color: var(--mt-danger); }
+.alert-warning { border-left-color: var(--mt-warning); }
+.alert-info    { border-left-color: var(--mt-info); }
+
+/* ── 12. MODALS ───────────────────────────────────────────────────────────── */
+.modal-content {
+  border-radius: 12px;
+  border: none;
+  box-shadow: var(--mt-shadow-lg);
+}
+.modal-header {
+  border-radius: 12px 12px 0 0;
+  padding: 1rem 1.25rem;
+}
+.modal-footer {
+  border-top: 1px solid var(--mt-border);
+  padding: .75rem 1.25rem;
+}
+
+/* ── 13. TOAST CONTAINER ──────────────────────────────────────────────────── */
+#mt-toast-container {
+  position: fixed;
+  top: calc(var(--mt-navbar-height) + 12px);
+  right: 16px;
+  z-index: 1090;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 320px;
+  max-width: 400px;
+}
+.mt-toast {
+  border-radius: 9px;
+  box-shadow: var(--mt-shadow-lg);
+  font-size: 0.875rem;
+  animation: mt-slide-in .22s ease;
+}
+@keyframes mt-slide-in {
+  from { transform: translateX(60px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ── 14. PAGE HEADER SECTION ──────────────────────────────────────────────── */
+.mt-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-bottom: 1.5rem;
+}
+.mt-page-header h3 {
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--mt-text);
+  margin-bottom: .15rem;
+}
+.mt-page-header p {
+  font-size: 0.83rem;
+  color: var(--mt-text-muted);
+  margin-bottom: 0;
+}
+
+/* ── 15. EMPTY STATE ──────────────────────────────────────────────────────── */
+.mt-empty-state {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: var(--mt-text-muted);
+}
+.mt-empty-state i  { font-size: 3rem; display: block; margin-bottom: .75rem; }
+.mt-empty-state h5 { font-weight: 600; margin-bottom: .4rem; }
+.mt-empty-state p  { font-size: 0.85rem; }
+
+/* ── 16. FEFO PREVIEW BOX ─────────────────────────────────────────────────── */
+#fefoPreview {
+  font-size: 0.82rem;
+  padding: 4px 0;
+  min-height: 20px;
+}
+
+/* ── 17. REPORT TAB PILLS ─────────────────────────────────────────────────── */
+.nav-pills .nav-link {
+  color: var(--mt-text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 7px;
+  padding: .45rem 1rem;
+  transition: all var(--mt-transition);
+}
+.nav-pills .nav-link:hover {
+  background-color: #e7f1ff;
+  color: var(--mt-primary);
+}
+.nav-pills .nav-link.active {
+  background-color: var(--mt-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── 18. CODE / BATCH NUMBER STYLING ─────────────────────────────────────── */
+code {
+  background-color: #f1f3f5;
+  color: #d63384;
+  padding: .15em .45em;
+  border-radius: 4px;
+  font-size: 0.82em;
+  font-weight: 600;
+}
+
+/* ── 19. SEARCH/FILTER CARD ───────────────────────────────────────────────── */
+.mt-filter-card {
+  background-color: var(--mt-surface);
+  border-radius: var(--mt-card-radius);
+  border: 1px solid var(--mt-border);
+  padding: .85rem 1rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--mt-shadow-sm);
+}
+
+/* ── 20. BLOOD GROUP BADGE ────────────────────────────────────────────────── */
+.badge-blood {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: .3px;
+}
+
+/* ── 21. EXPIRY STATUS INDICATORS ────────────────────────────────────────── */
+.expiry-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: .25em .6em;
+  border-radius: 20px;
+}
+
+/* ── 22. LOADING SPINNER OVERLAY ──────────────────────────────────────────── */
+#mt-page-loader {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,.55);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+#mt-page-loader.show { display: flex; }
+
+/* ── 23. FOOTER ───────────────────────────────────────────────────────────── */
+.mt-footer {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--mt-text-muted);
+  padding: 1.2rem 0 .8rem;
+  border-top: 1px solid var(--mt-border);
+  margin-top: 2rem;
+}
+
+/* ── 24. LOGIN PAGE ───────────────────────────────────────────────────────── */
+body.mt-login-page {
+  background: linear-gradient(145deg, #0a4fa3 0%, #0d6efd 45%, #198754 100%);
+}
+.login-card {
+  max-width: 440px;
+  width: 100%;
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(0,0,0,.28);
+  border: none;
+  overflow: hidden;
+}
+.login-header { background-color: #fff; padding: 32px 32px 16px; text-align: center; }
+.login-body   { background-color: #fff; padding: 16px 32px 32px; }
+.brand-icon {
+  width: 68px; height: 68px;
+  background: linear-gradient(135deg, #e7f1ff 0%, #d1e7dd 100%);
+  color: var(--mt-primary);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 12px rgba(13,110,253,.20);
+}
+.demo-credentials {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.83rem;
+  margin-top: 20px;
+  border: 1px dashed #ced4da;
+}
+
+/* ── 25. RESPONSIVE TWEAKS ────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .mt-page-header { flex-direction: column; align-items: flex-start; }
+  .navbar-nav .nav-link { padding: 10px 14px !important; border-bottom: none; }
+  .table thead th { font-size: 0.72rem; }
+  #mt-toast-container { right: 8px; left: 8px; min-width: unset; max-width: unset; }
+  .container-fluid.py-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
+}
+
+/* ── 26. PRINT STYLES ─────────────────────────────────────────────────────── */
+@media print {
+  /* Hide non-report elements */
+  .navbar, .mt-footer, .btn, .btn-group,
+  form.row, .nav-pills, #mt-toast-container,
+  .alert-dismissible .btn-close { display: none !important; }
+
+  body { background: #fff !important; font-size: 11pt; color: #000; }
+  .card { border: 1px solid #ccc !important; box-shadow: none !important; break-inside: avoid; }
+  .card-header { background: #f5f5f5 !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .table { font-size: 9pt; }
+  .table thead { background-color: #e0e0e0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  a[href]:after { content: none !important; }
+  .container-fluid { padding: 0 !important; }
+  .row { margin: 0 !important; }
+
+  /* Page breaks */
+  .page-break-before { page-break-before: always; }
+  .page-break-after  { page-break-after: always; }
+}

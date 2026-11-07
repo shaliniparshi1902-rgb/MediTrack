@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+
+{% block title %}MediTrack - Hospital Inventory Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold text-dark mb-1">Hospital Inventory Dashboard</h3>
+        <p class="text-muted small mb-0">Overview of pharmaceutical stock, critical expiry tracking, and department usage</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('inventory.add') }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i> Add Medicine
+        </a>
+        <a href="{{ url_for('usage.index') }}" class="btn btn-success btn-sm">
+            <i class="bi bi-box-arrow-right me-1"></i> Dispense Medicine
+        </a>
+    </div>
+</div>
+
+<!-- KPI Summary Metric Cards -->
+<div class="row g-3 mb-4">
+    <!-- Total Medicines -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm border-0 border-start border-primary border-4 p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small text-uppercase fw-semibold">Total Medicines</span>
+                    <h3 class="fw-bold mb-0 text-primary">{{ metrics.total_medicines }}</h3>
+                    <small class="text-muted">Master drug catalog</small>
+                </div>
+                <div class="bg-primary-subtle text-primary p-3 rounded-circle fs-4">
+                    <i class="bi bi-capsule"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Stock Available -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm border-0 border-start border-success border-4 p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small text-uppercase fw-semibold">Available Stock</span>
+                    <h3 class="fw-bold mb-0 text-success">{{ metrics.total_stock }}</h3>
+                    <small class="text-muted">Active unexpired units</small>
+                </div>
+                <div class="bg-success-subtle text-success p-3 rounded-circle fs-4">
+                    <i class="bi bi-boxes"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expiring Soon (< 30 Days) -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm border-0 border-start border-warning border-4 p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small text-uppercase fw-semibold">Expiring in 30 Days</span>
+                    <h3 class="fw-bold mb-0 text-warning">{{ metrics.critical_count }}</h3>
+                    <small class="text-danger fw-semibold">{{ metrics.critical_units }} units at risk</small>
+                </div>
+                <div class="bg-warning-subtle text-warning p-3 rounded-circle fs-4">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Already Expired -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm border-0 border-start border-danger border-4 p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small text-uppercase fw-semibold">Expired Batches</span>
+                    <h3 class="fw-bold mb-0 text-danger">{{ metrics.expired_count }}</h3>
+                    <small class="text-muted">{{ metrics.expired_units }} units (${{ '%.2f'|format(metrics.expired_loss) }})</small>
+                </div>
+                <div class="bg-danger-subtle text-danger p-3 rounded-circle fs-4">
+                    <i class="bi bi-x-octagon"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Urgent Expiry Warnings Table -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-alarm text-warning me-1"></i> Urgent Expiry Warnings (&le; 30 Days)
+                </h5>
+                <a href="{{ url_for('reports.index', tab='expiring_soon') }}" class="btn btn-outline-primary btn-sm">View All</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th>Medicine</th>
+                            <th>Batch #</th>
+                            <th>Quantity</th>
+                            <th>Expiry Date</th>
+                            <th>Status</th>
+                            <th>Rack</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if metrics.urgent_batches %}
+                            {% for b in metrics.urgent_batches %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold text-dark">{{ b.medicine_name }}</div>
+                                    <small class="text-muted">{{ b.generic_name }}</small>
+                                </td>
+                                <td><code>{{ b.batch_number }}</code></td>
+                                <td><span class="badge bg-secondary">{{ b.current_quantity }} units</span></td>
+                                <td>{{ b.expiry_date|date_format }}</td>
+                                <td>
+                                    <span class="badge bg-{{ b.status_info.badge_class }}">{{ b.status_info.label }}</span>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ b.storage_rack or 'N/A' }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="bi bi-check-circle text-success fs-3 d-block mb-1"></i>
+                                    No batches expiring within the next 30 days.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Low Stock Alert Box -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-bell text-danger me-1"></i> Low-Stock Alerts
+                </h5>
+                <a href="{{ url_for('inventory.index', status='low_stock') }}" class="btn btn-outline-danger btn-sm">
+                    {{ metrics.low_stock_count }} items
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% if metrics.low_stock_items %}
+                        {% for item in metrics.low_stock_items %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                            <div>
+                                <div class="fw-semibold text-dark">{{ item.name }}</div>
+                                <small class="text-muted">{{ item.generic_name }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-danger">{{ item.current_stock }} units</span>
+                                <small class="text-muted d-block">Min: {{ item.min_stock_threshold }}</small>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    {% else %}
+                        <li class="list-group-item text-center py-4 text-muted">
+                            <i class="bi bi-check-circle text-success fs-3 d-block mb-1"></i>
+                            All inventory items are above minimum stock levels.
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-4">
+    <!-- Category Distribution Chart -->
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100 p-3">
+            <h5 class="fw-bold text-dark mb-3">Medicine Category Breakdown</h5>
+            <div style="height: 280px; position: relative;">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Usage Breakdown Chart -->
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100 p-3">
+            <h5 class="fw-bold text-dark mb-3">Department Consumption (Units)</h5>
+            <div style="height: 280px; position: relative;">
+                <canvas id="departmentChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    fetch("{{ url_for('dashboard.chart_data_api') }}")
+        .then(response => response.json())
+        .then(data => {
+            // Category Chart (Doughnut)
+            const catCtx = document.getElementById('categoryChart').getContext('2d');
+            new Chart(catCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.categories.labels,
+                    datasets: [{
+                        data: data.categories.data,
+                        backgroundColor: [
+                            '#0d6efd', '#198754', '#ffc107', '#dc3545',
+                            '#0dcaf0', '#6f42c1', '#fd7e14'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right' } }
+                }
+            });
+
+            // Department Usage Chart (Bar)
+            const deptCtx = document.getElementById('departmentChart').getContext('2d');
+            new Chart(deptCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.departments.labels,
+                    datasets: [{
+                        label: 'Units Dispensed',
+                        data: data.departments.data,
+                        backgroundColor: '#0d6efd',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        })
+        .catch(err => console.error("Error loading charts:", err));
+});
+</script>
+{% endblock %}

@@ -1,0 +1,266 @@
+{% extends 'base.html' %}
+
+{% block title %}MediTrack - Medicine Dispensing & Usage Log{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold text-dark mb-1">Medicine Usage & Dispensing</h3>
+        <p class="text-muted small mb-0">Record medicine allocation to hospital departments and patients with automatic FEFO batch selection</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Dispense Medicine Form Card -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="fw-bold mb-0 text-success">
+                    <i class="bi bi-box-arrow-right me-1"></i> Dispense Medicine
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('usage.dispense') }}" id="dispenseForm">
+                    <!-- Medicine Select -->
+                    <div class="mb-3">
+                        <label for="medicine_id" class="form-label small fw-semibold">Select Medicine <span class="text-danger">*</span></label>
+                        <select class="form-select" id="medicine_id" name="medicine_id" required>
+                            <option value="">Choose medicine from stock...</option>
+                            {% for m in medicines %}
+                                <option value="{{ m.id }}" data-stock="{{ m.unexpired_stock }}">
+                                    {{ m.name }} ({{ m.strength }}) — {{ m.unexpired_stock }} units available
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Quantity -->
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label small fw-semibold">Quantity to Dispense <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" min="1" placeholder="Units count" required>
+                        <div id="fefoPreview" class="small mt-1 text-primary"></div>
+                    </div>
+
+                    <!-- Department -->
+                    <div class="mb-3">
+                        <label for="department" class="form-label small fw-semibold">Hospital Department / Ward <span class="text-danger">*</span></label>
+                        <select class="form-select" id="department" name="department" required>
+                            <option value="">Select Department</option>
+                            {% for dept in departments %}
+                                <option value="{{ dept }}">{{ dept }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Quick Select Registered Patient -->
+                    <div class="mb-3">
+                        <label for="patient_select" class="form-label small fw-semibold text-muted d-flex justify-content-between">
+                            <span><i class="bi bi-people me-1"></i> Registered Patient (Quick Select)</span>
+                            <a href="{{ url_for('patients.add') }}" class="small text-decoration-none">+ Register New</a>
+                        </label>
+                        <select class="form-select" id="patient_select">
+                            <option value="">-- Select from registered patients (or enter manually below) --</option>
+                            {% if patients %}
+                                {% for p in patients %}
+                                    <option value="{{ p.patient_id }}" data-name="{{ p.full_name }}" data-allergies="{{ p.allergies or 'None reported' }}" data-blood="{{ p.blood_group or '' }}" {% if prefill_patient_id == p.patient_id %}selected{% endif %}>
+                                        {{ p.full_name }} ({{ p.patient_id }}) {% if p.blood_group %}[{{ p.blood_group }}]{% endif %}
+                                    </option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+
+                    <!-- Live Patient Allergy Alert Box -->
+                    <div id="patientAllergyAlert" class="alert alert-danger py-2 small mb-3 d-none">
+                        <div class="fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i> Patient Drug Allergies Alert:</div>
+                        <span id="patientAllergyText"></span>
+                    </div>
+
+                    <!-- Patient Name & ID -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-7">
+                            <label for="patient_name" class="form-label small fw-semibold">Patient Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="patient_name" name="patient_name" value="{{ prefill_patient_name }}" placeholder="Full name" required>
+                        </div>
+                        <div class="col-5">
+                            <label for="patient_id" class="form-label small fw-semibold">Patient ID</label>
+                            <input type="text" class="form-control" id="patient_id" name="patient_id" value="{{ prefill_patient_id }}" placeholder="e.g. PAT-102">
+                        </div>
+                    </div>
+
+                    <!-- Prescribing Doctor -->
+                    <div class="mb-3">
+                        <label for="prescribed_by" class="form-label small fw-semibold">Prescribing Doctor</label>
+                        <input type="text" class="form-control" id="prescribed_by" name="prescribed_by" placeholder="e.g. Dr. Ramesh Rao">
+                    </div>
+
+                    <!-- Clinical Reason -->
+                    <div class="mb-3">
+                        <label for="reason" class="form-label small fw-semibold">Clinical Indication / Diagnosis</label>
+                        <input type="text" class="form-control" id="reason" name="reason" placeholder="e.g. Acute emergency resuscitation">
+                    </div>
+
+                    <div class="alert alert-info py-2 small mb-4">
+                        <i class="bi bi-shield-check me-1"></i> <strong>FEFO Principle:</strong> MediTrack will automatically deduct stock from the earliest-expiring active batch first. Expired batches are never dispensed.
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success fw-semibold py-2">
+                            <i class="bi bi-check2-circle me-1"></i> Confirm Dispense
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Usage History Log Table -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-clock-history text-primary me-1"></i> Dispensing Audit Trail ({{ usage_logs|length }})
+                </h5>
+            </div>
+
+            <!-- Filters -->
+            <div class="card-body p-3 bg-light border-bottom">
+                <form method="GET" action="{{ url_for('usage.index') }}" class="row g-2 align-items-center">
+                    <div class="col-md-4">
+                        <select name="department" class="form-select form-select-sm">
+                            <option value="">All Departments</option>
+                            {% for dept in departments %}
+                                <option value="{{ dept }}" {% if selected_dept == dept %}selected{% endif %}>{{ dept }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="input-group input-group-sm">
+                            <input type="date" name="from_date" class="form-control" value="{{ from_date }}" title="From Date">
+                            <input type="date" name="to_date" class="form-control" value="{{ to_date }}" title="To Date">
+                        </div>
+                    </div>
+                    <div class="col-md-3 d-flex gap-1">
+                        <button type="submit" class="btn btn-primary btn-sm flex-grow-1">Filter</button>
+                        <a href="{{ url_for('usage.index') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Table -->
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Medicine & Batch</th>
+                            <th>Qty</th>
+                            <th>Dept & Patient</th>
+                            <th>Doctor</th>
+                            <th>Dispensed By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if usage_logs %}
+                            {% for u in usage_logs %}
+                            <tr>
+                                <td>{{ u.usage_date }}</td>
+                                <td>
+                                    <div class="fw-semibold text-dark">{{ u.medicine_name }}</div>
+                                    <small class="text-muted">Batch: <code>{{ u.batch_number }}</code></small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ u.quantity_used }} units</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info-subtle text-info-emphasis">{{ u.department }}</span>
+                                    <div class="text-dark fw-semibold mt-1">{{ u.patient_name }}</div>
+                                    {% if u.patient_id %}<small class="text-muted">({{ u.patient_id }})</small>{% endif %}
+                                </td>
+                                <td>{{ u.prescribed_by or 'N/A' }}</td>
+                                <td>{{ u.dispensed_by_name }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No usage records found.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const medSelect = document.getElementById('medicine_id');
+    const qtyInput = document.getElementById('quantity');
+    const previewDiv = document.getElementById('fefoPreview');
+
+    function checkFEFO() {
+        const medId = medSelect.value;
+        const qty = qtyInput.value || 1;
+        if (!medId) {
+            previewDiv.textContent = '';
+            return;
+        }
+
+        fetch(`{{ url_for('usage.preview_fefo_api', medicine_id=0) }}`.replace('0', medId) + `?quantity=${qty}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const batchNames = data.allocations.map(a => `${a.batch_number} (${a.deduct_quantity}u)`).join(', ');
+                    previewDiv.innerHTML = `<i class="bi bi-check-circle text-success me-1"></i> FEFO will allocate: <strong>${batchNames}</strong>`;
+                } else {
+                    previewDiv.innerHTML = `<i class="bi bi-exclamation-circle text-danger me-1"></i> <span class="text-danger">${data.message}</span>`;
+                }
+            })
+            .catch(() => {
+                previewDiv.textContent = '';
+            });
+    }
+
+    medSelect.addEventListener('change', checkFEFO);
+    qtyInput.addEventListener('input', checkFEFO);
+
+    // Patient selection auto-fill and allergy warning
+    const patientSelect = document.getElementById('patient_select');
+    const patientNameInput = document.getElementById('patient_name');
+    const patientIdInput = document.getElementById('patient_id');
+    const allergyAlert = document.getElementById('patientAllergyAlert');
+    const allergyText = document.getElementById('patientAllergyText');
+
+    function handlePatientChange() {
+        if (!patientSelect) return;
+        const selectedOpt = patientSelect.options[patientSelect.selectedIndex];
+        if (selectedOpt && selectedOpt.value) {
+            patientNameInput.value = selectedOpt.dataset.name || '';
+            patientIdInput.value = selectedOpt.value;
+
+            const allergies = selectedOpt.dataset.allergies || '';
+            if (allergies && !['none', 'none reported', 'n/a', ''].includes(allergies.trim().toLowerCase())) {
+                allergyText.textContent = allergies;
+                allergyAlert.classList.remove('d-none');
+            } else {
+                allergyAlert.classList.add('d-none');
+            }
+        } else {
+            allergyAlert.classList.add('d-none');
+        }
+    }
+
+    if (patientSelect) {
+        patientSelect.addEventListener('change', handlePatientChange);
+        if (patientSelect.value) {
+            handlePatientChange();
+        }
+    }
+});
+</script>
+{% endblock %}
